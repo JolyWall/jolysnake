@@ -168,10 +168,14 @@ async def main():
     PAUSE_KEYS = (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_p)
 
     # ---- Тач-управление ----
-    # pygame отдаёт координаты пальца в нормированных значениях [0..1]
-    # относительно окна. Свайп = вектор от FINGERDOWN до FINGERUP.
-    swipe_start     = None    # (x, y) в нормированных координатах
-    SWIPE_THRESHOLD = 0.05    # минимальная длина свайпа (5% стороны окна)
+    # Координаты пальца в нормированных значениях [0..1] относительно окна.
+    # Детектим свайп НА ДВИЖЕНИИ (FINGERMOTION), как только палец сдвинулся
+    # на достаточное расстояние — это намного отзывчивее, чем ждать FINGERUP.
+    # После срабатывания "потребляем" жест (swipe_consumed=True), чтобы он
+    # не сработал второй раз в том же касании.
+    swipe_start     = None    # (x, y) при FINGERDOWN
+    swipe_consumed  = False   # уже передали направление в этом касании?
+    SWIPE_THRESHOLD = 0.03    # 3% стороны окна — около 20 px на айфоне
 
     def start_game():
         """Запускает новую игру с текущими настройками."""
@@ -265,9 +269,13 @@ async def main():
             # Меню/кнопки работают через MOUSEBUTTONDOWN (SDL автоматически
             # конвертирует тап в клик), сюда попадают только жесты в STATE_PLAYING.
             if event.type == pygame.FINGERDOWN:
-                swipe_start = (event.x, event.y)
-            elif event.type == pygame.FINGERUP:
-                if swipe_start is not None and state == STATE_PLAYING:
+                swipe_start    = (event.x, event.y)
+                swipe_consumed = False
+            elif event.type == pygame.FINGERMOTION:
+                # Срабатываем СРАЗУ как палец прошёл порог — не ждём отпускания.
+                if (swipe_start is not None
+                        and not swipe_consumed
+                        and state == STATE_PLAYING):
                     dx = event.x - swipe_start[0]
                     dy = event.y - swipe_start[1]
                     if abs(dx) > SWIPE_THRESHOLD or abs(dy) > SWIPE_THRESHOLD:
@@ -275,7 +283,15 @@ async def main():
                             game.steer(RIGHT if dx > 0 else LEFT)
                         else:
                             game.steer(DOWN if dy > 0 else UP)
-                swipe_start = None
+                        swipe_consumed = True
+                        # Сдвигаем "начало" к текущей точке — следующий свайп
+                        # внутри этого же касания сможет сработать снова,
+                        # если игрок продолжит вести палец дальше.
+                        swipe_start    = (event.x, event.y)
+                        swipe_consumed = False
+            elif event.type == pygame.FINGERUP:
+                swipe_start    = None
+                swipe_consumed = False
 
             # ===== Мышь =====
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

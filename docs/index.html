@@ -286,23 +286,8 @@ function show_infobox() {
 
     <script src="https://pygame-web.github.io/cdn/0.9.3//browserfs.min.js"></script>
 
-    <style>
-      /* Запрещаем браузеру обрабатывать тач как скролл/зум — */
-      /* все свайпы уходят в игру через pygame.FINGER* события. */
-      html, body {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        overscroll-behavior: none;
-        touch-action: none;
-        height: 100%;
-        width: 100%;
-        -webkit-user-select: none;
-        user-select: none;
-      }
-      canvas { touch-action: none !important; }
-    </style>
-</head>
+    <style>html,body{margin:0;padding:0;overflow:hidden;overscroll-behavior:none;touch-action:none;height:100%;width:100%;-webkit-user-select:none;user-select:none}canvas{touch-action:none false});document.addEventListener('gesturestart',function(e){e.preventDefault()},{passive:false});document.addEventListener('dblclick',function(e){e.preventDefault()},{passive:false});</script>
+
 
 <body>
 
@@ -450,11 +435,5 @@ frameborder="1"
 
     </script>
 
-<script>
-  // Блокируем скролл/зум страницы на тач — все жесты уходят в игру.
-  document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
-  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
-  document.addEventListener('dblclick', function(e){ e.preventDefault(); }, { passive: false });
-</script>
-</body>
+
 </html>
