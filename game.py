@@ -62,6 +62,45 @@ def _validate(data):
     return data
 
 
+def _is_mobile_device():
+    """
+    Эвристика «мобильное устройство ли это».
+    Работает только в pygbag-сборке (platform.window — это JS window).
+    На локальном Python возвращает False.
+    """
+    try:
+        import platform as _pf
+        if not hasattr(_pf, "window"):
+            return False
+        nav = _pf.window.navigator
+        # Тачскрин на iPad/iPhone/Android.
+        try:
+            if int(nav.maxTouchPoints or 0) > 0:
+                return True
+        except Exception:
+            pass
+        ua = str(nav.userAgent or "").lower()
+        for kw in ("iphone", "ipad", "ipod", "android", "mobile"):
+            if kw in ua:
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def _fresh_defaults():
+    """
+    Дефолтные настройки при первом запуске (когда save-файла ещё нет).
+    На мобильных устройствах сразу включаем крестовину и поле 12×12 —
+    с большими клетками и удобным управлением для пальца.
+    """
+    data = dict(DEFAULT_DATA)
+    if _is_mobile_device():
+        data["board_size"] = 12
+        data["touch_mode"] = "dpad"
+    return data
+
+
 def load_data():
     """Читает save.json. Если файла нет — пробует подхватить старый highscore.txt."""
     try:
@@ -76,11 +115,11 @@ def load_data():
     try:
         with open(LEGACY_BEST, "r", encoding="utf-8") as f:
             best = int(f.read().strip())
-        merged = dict(DEFAULT_DATA)
+        merged = _fresh_defaults()
         merged["best"] = best
         return _validate(merged)
     except (OSError, ValueError):
-        return dict(DEFAULT_DATA)
+        return _validate(_fresh_defaults())
 
 
 def save_data(data):

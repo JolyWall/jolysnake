@@ -50,7 +50,10 @@ def apply_size(size):
 # крестовину в любое место экрана независимо от размера canvas.
 
 TOUCH_MODES        = ["swipes", "dpad"]
-TOUCH_MODE_LABELS  = {"swipes": "Свайпы", "dpad": "Крестовина"}
+TOUCH_MODE_LABELS  = {
+    "swipes": "Свайпы / Клавиатура",
+    "dpad":   "Крестовина",
+}
 DEFAULT_TOUCH_MODE = "swipes"
 
 
