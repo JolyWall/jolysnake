@@ -22,7 +22,6 @@ from config import (
     REVIVAL_INVINCIBLE_SEC, REVIVAL_TIMER_SEC, REVIVAL_COUNTDOWN_SEC,
     FOOD_GOLDEN, FOOD_SLOW, SLOW_DELTA,
     C_FOOD, C_GOLDEN, C_SLOW, C_TEXT, C_SNAKE, C_DIM,
-    DPAD_AREA_H,
 )
 from game import Game, load_data, save_data
 from render import (
@@ -33,7 +32,6 @@ from render import (
     build_gameover_buttons, build_pause_buttons,
     build_revival_offer_buttons, build_math_answer_buttons,
     draw_time_bar, draw_countdown_number, draw_math_problem,
-    draw_dpad, dpad_hit_direction,
 )
 from effects import Effects
 
@@ -114,8 +112,7 @@ async def main():
     revivals_on       = data["revivals"]
     board_size        = data["board_size"]
     touch_mode        = data["touch_mode"]
-    config.apply_size(board_size,
-                      dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
+    config.apply_size(board_size)
 
     # Создаём пустую игру, чтобы было что рисовать на фоне меню.
     game       = Game()
@@ -201,8 +198,7 @@ async def main():
         """Запускает новую игру с текущими настройками."""
         nonlocal tick_rate, tick_interval, tick_accum, prev_snake, state, milestone
         nonlocal glitch_t, used_revival, invincible_left
-        config.apply_size(board_size,
-                          dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
+        config.apply_size(board_size)
         cfg = DIFFICULTIES[difficulty]
         walls = WALLS_COUNT if obstacles_on else 0
         game.reset(walls_count=walls, bonuses_enabled=bonuses_on)
@@ -336,16 +332,13 @@ async def main():
                         chosen = size_dd.hit_option(event.pos)
                         if chosen is not None:
                             board_size = chosen
-                            config.apply_size(board_size,
-                                              dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
+                            config.apply_size(board_size)
                             persist()
                         open_dropdown = None
                     elif open_dropdown == "touch_mode":
                         chosen = touch_dd.hit_option(event.pos)
                         if chosen is not None:
                             touch_mode = chosen
-                            config.apply_size(board_size,
-                                              dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
                             persist()
                         open_dropdown = None
                     else:
@@ -387,11 +380,6 @@ async def main():
                                 state = STATE_MAIN_MENU
                             break
 
-                elif state == STATE_PLAYING and touch_mode == "dpad":
-                    # Тап по крестовине = поворот.
-                    direction = dpad_hit_direction(event.pos)
-                    if direction is not None:
-                        game.steer(direction)
 
                 elif state == STATE_REVIVAL_OFFER:
                     for b in revival_offer_btns:
@@ -579,10 +567,6 @@ async def main():
                    dying=dying_progress, glitch=glitch_progress,
                    visible=snake_visible)
         fx.draw(screen, fx_font)
-        # Крестовина — видна во время игры и паузы, если выбрана.
-        if touch_mode == "dpad" and state in (STATE_PLAYING, STATE_PAUSED,
-                                              STATE_DYING, STATE_GAMEOVER):
-            draw_dpad(screen, mouse_pos)
         draw_panel(screen, game.score, best,
                    DIFFICULTIES[difficulty]["name"],
                    milestone, best_milestone, fb, fs)

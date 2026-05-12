@@ -73,6 +73,49 @@ CSS = f"""
 
   /* Скрываем дефолтный progress bar / status строку pygbag-а. */
   #transfer {{ background: transparent !important; }}
+
+  /* Тач-крестовина: 4 кнопки в форме + поверх страницы. */
+  #snake-dpad {{
+    position: fixed;
+    z-index: 100;
+    width: 200px;
+    height: 200px;
+    pointer-events: none;        /* контейнер сам по себе не кликабельный */
+    display: none;               /* по умолчанию скрыт — включается из JS */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }}
+  #snake-dpad .dbtn {{
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    background: rgba(240, 240, 240, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.75);
+    border-radius: 14px;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }}
+  #snake-dpad .dbtn:active {{
+    background: rgba(255, 255, 255, 0.7);
+  }}
+  #snake-dpad .dbtn::before {{
+    content: '';
+    display: block;
+    width: 0; height: 0;
+    border-style: solid;
+  }}
+  #snake-dpad .dup    {{ top: 0;   left: 68px; }}
+  #snake-dpad .ddown  {{ top: 136px; left: 68px; }}
+  #snake-dpad .dleft  {{ top: 68px; left: 0; }}
+  #snake-dpad .dright {{ top: 68px; left: 136px; }}
+  #snake-dpad .dup::before    {{ border-width: 0 12px 16px 12px; border-color: transparent transparent #333 transparent; }}
+  #snake-dpad .ddown::before  {{ border-width: 16px 12px 0 12px; border-color: #333 transparent transparent transparent; }}
+  #snake-dpad .dleft::before  {{ border-width: 12px 16px 12px 0; border-color: transparent #333 transparent transparent; }}
+  #snake-dpad .dright::before {{ border-width: 12px 0 12px 16px; border-color: transparent transparent transparent #333; }}
 </style>
 """
 
@@ -199,6 +242,70 @@ JS = """
 
   document.addEventListener('touchend',    function(){ swipeStart = null; }, { passive: false });
   document.addEventListener('touchcancel', function(){ swipeStart = null; }, { passive: false });
+
+  // === 3. Тач-крестовина (HTML-наложение под canvas) ===
+  // Кнопки рендерим как обычные DOM-элементы и позиционируем под canvas.
+  // При нажатии стреляем тем же fireKey, что и для свайпов.
+  function ensureDpadElement() {
+    if (document.getElementById('snake-dpad')) return;
+    var pad = document.createElement('div');
+    pad.id = 'snake-dpad';
+    pad.innerHTML =
+      '<div class="dbtn dup"    data-dir="up"></div>' +
+      '<div class="dbtn ddown"  data-dir="down"></div>' +
+      '<div class="dbtn dleft"  data-dir="left"></div>' +
+      '<div class="dbtn dright" data-dir="right"></div>';
+    document.body.appendChild(pad);
+    var keyMap = {
+      up:    ['ArrowUp',    38],
+      down:  ['ArrowDown',  40],
+      left:  ['ArrowLeft',  37],
+      right: ['ArrowRight', 39],
+    };
+    Array.prototype.forEach.call(pad.querySelectorAll('.dbtn'), function(btn){
+      var dir = btn.getAttribute('data-dir');
+      var k = keyMap[dir];
+      function press(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fireKey(k[0], k[1]);
+      }
+      btn.addEventListener('touchstart', press, { passive: false });
+      btn.addEventListener('mousedown',  press);
+    });
+  }
+
+  function placeDpad() {
+    var pad = document.getElementById('snake-dpad');
+    if (!pad) return;
+    var mode = (function(){ try { return localStorage.getItem('snake_touch_mode'); } catch(e) { return null; } })();
+    if (mode !== 'dpad') {
+      pad.style.display = 'none';
+      return;
+    }
+    // Считаем низ canvas — крестовину помещаем под него по центру.
+    var canvas = document.getElementById('canvas');
+    if (!canvas) return;
+    var rect = canvas.getBoundingClientRect();
+    var padW = 200, padH = 200;
+    var vh = window.innerHeight;
+    var vw = window.innerWidth;
+    // Стандартно — прямо под canvas, центрировано горизонтально.
+    var top  = Math.floor(rect.bottom + 20);
+    var left = Math.floor((vw - padW) / 2);
+    // Если снизу нет места — прижимаемся к низу окна (десктоп без letterbox).
+    if (top + padH > vh - 10) top = vh - padH - 10;
+    if (top < rect.top)       top = vh - padH - 10;  // запасной случай
+    pad.style.top  = top  + 'px';
+    pad.style.left = left + 'px';
+    pad.style.display = 'block';
+  }
+
+  window.addEventListener('load', function(){ ensureDpadElement(); placeDpad(); });
+  window.addEventListener('resize', placeDpad);
+  // Перепроверяем — крестовина может включаться/выключаться из настроек,
+  // canvas может ресайзиться pygbag-ом независимо.
+  setInterval(function(){ ensureDpadElement(); placeDpad(); }, 500);
 </script>
 """
 

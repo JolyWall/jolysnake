@@ -24,7 +24,6 @@ from config import (
     DIFFICULTY_ORDER, DIFFICULTIES,
     SIZES,
     TOUCH_MODES, TOUCH_MODE_LABELS,
-    DPAD_AREA_H, DPAD_BUTTON,
 )
 
 
@@ -521,79 +520,8 @@ def build_pause_buttons():
     ]
 
 
-# ============================================================
-# ТАЧ-КРЕСТОВИНА
-# ============================================================
-
-def _dpad_centers():
-    """(cx, cy) центров четырёх кнопок крестовины."""
-    cx = WIN_W // 2
-    cy = WIN_H - DPAD_AREA_H // 2
-    B = DPAD_BUTTON
-    return {
-        "up":    (cx,     cy - B),
-        "down":  (cx,     cy + B),
-        "left":  (cx - B, cy),
-        "right": (cx + B, cy),
-    }
-
-
-def _dpad_rect(direction):
-    cx, cy = _dpad_centers()[direction]
-    B = DPAD_BUTTON
-    return pygame.Rect(cx - B // 2, cy - B // 2, B, B)
-
-
-def dpad_hit_direction(pos):
-    """Возвращает (dx, dy) или None — какое направление нажато на крестовине."""
-    mapping = {"up": UP, "down": DOWN, "left": LEFT, "right": RIGHT}
-    for d in ("up", "down", "left", "right"):
-        if _dpad_rect(d).collidepoint(pos):
-            return mapping[d]
-    return None
-
-
-def _draw_arrow(surface, direction, rect, color):
-    """Треугольник-стрелка внутри кнопки."""
-    cx, cy = rect.center
-    h = 14  # длина "оси" стрелки от центра до острия
-    w = 12  # половина базы (поперечная)
-    if direction == "up":
-        pts = [(cx, cy - h), (cx - w, cy + 6), (cx + w, cy + 6)]
-    elif direction == "down":
-        pts = [(cx, cy + h), (cx - w, cy - 6), (cx + w, cy - 6)]
-    elif direction == "left":
-        pts = [(cx - h, cy), (cx + 6, cy - w), (cx + 6, cy + w)]
-    else:  # right
-        pts = [(cx + h, cy), (cx - 6, cy - w), (cx - 6, cy + w)]
-    pygame.draw.polygon(surface, color, pts)
-
-
-def draw_dpad(surface, mouse_pos, pressed_dir=None):
-    """
-    Рисует крестовину 4 кнопок снизу. pressed_dir — направление, которое
-    сейчас активно (нажато / только что выбрано), подсвечивается ярче.
-    """
-    for d in ("up", "down", "left", "right"):
-        rect  = _dpad_rect(d)
-        hover = rect.collidepoint(mouse_pos)
-        active = (pressed_dir is not None and {
-            "up": UP, "down": DOWN, "left": LEFT, "right": RIGHT
-        }[d] == pressed_dir)
-        # Полупрозрачный фон: ярче при hover/active.
-        if active:
-            bg_alpha = 180
-        elif hover:
-            bg_alpha = 140
-        else:
-            bg_alpha = 90
-        s = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
-        pygame.draw.rect(s, (240, 240, 240, bg_alpha),
-                         s.get_rect(), border_radius=14)
-        pygame.draw.rect(s, (255, 255, 255, 200),
-                         s.get_rect(), width=2, border_radius=14)
-        surface.blit(s, (rect.x, rect.y))
-        _draw_arrow(surface, d, rect, (40, 40, 40))
+# Тач-крестовина теперь рисуется HTML-наложением (см. patch_html.py),
+# поэтому функций draw_dpad / dpad_hit_direction здесь больше нет.
 
 
 def build_revival_offer_buttons():
