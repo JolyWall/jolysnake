@@ -99,10 +99,11 @@ async def main():
     # визуально становятся мелкими. Поднимаем все кегли в полтора раза.
     _is_mobile  = _is_mobile_device()
     _scale      = 1.45 if _is_mobile else 1.0
-    fb          = load_font(int(24 * _scale), bold=True)
-    fs          = load_font(int(17 * _scale))
-    fx_font     = load_font(int(20 * _scale), bold=True)
-    fx_big_font = load_font(int(86 * _scale), bold=True)
+    fb           = load_font(int(24 * _scale), bold=True)
+    fs           = load_font(int(17 * _scale))
+    fx_font      = load_font(int(20 * _scale), bold=True)
+    fx_big_font  = load_font(int(86 * _scale), bold=True)  # отсчёт 3-2-1, ×N
+    fx_math_font = load_font(int(50 * _scale), bold=True)  # текст примера
     START_LENGTH = 5  # совпадает с длиной змейки в Game.reset()
 
     # ---- Загрузка сохранения и применение размера поля ----
@@ -668,7 +669,7 @@ async def main():
             # Полоса оставшегося времени сверху.
             draw_time_bar(screen, math_timer / REVIVAL_TIMER_SEC)
             # Текст примера большим шрифтом.
-            draw_math_problem(screen, math_question, fx_big_font)
+            draw_math_problem(screen, math_question, fx_math_font)
             # Кнопки с вариантами.
             for b in math_buttons:
                 b.draw(screen, fs, mouse_pos)

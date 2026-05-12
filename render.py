@@ -483,21 +483,21 @@ def build_settings(difficulty, board_size, touch_mode):
 
 def build_walls_button(walls_pos, obstacles_on):
     cx, cy = walls_pos
-    label = f"Препятствия: {'ВКЛ' if obstacles_on else 'ВЫКЛ'}"
+    label = "ВКЛ" if obstacles_on else "ВЫКЛ"
     return Button(cx, cy, label, ("toggle_obstacles", None),
                   active=obstacles_on)
 
 
 def build_bonuses_button(bonuses_pos, bonuses_on):
     cx, cy = bonuses_pos
-    label = f"Бонусные яблоки: {'ВКЛ' if bonuses_on else 'ВЫКЛ'}"
+    label = "ВКЛ" if bonuses_on else "ВЫКЛ"
     return Button(cx, cy, label, ("toggle_bonuses", None),
                   active=bonuses_on)
 
 
 def build_revivals_button(revivals_pos, revivals_on):
     cx, cy = revivals_pos
-    label = f"Возрождение: {'ВКЛ' if revivals_on else 'ВЫКЛ'}"
+    label = "ВКЛ" if revivals_on else "ВЫКЛ"
     return Button(cx, cy, label, ("toggle_revivals", None),
                   active=revivals_on)
 
