@@ -549,7 +549,9 @@ async def main():
 
         if state == STATE_MAIN_MENU:
             draw_overlay_bg(screen)
-            draw_title(screen, "ЗМЕЙКА", "", WIN_H // 2 - 180, fb, fs)
+            draw_title(screen, "ЗМЕЙКА",
+                       "Стрелки · WASD · свайпы",
+                       WIN_H // 2 - 180, fb, fs)
             for b in main_menu_btns:
                 b.draw(screen, fs, mouse_pos)
 

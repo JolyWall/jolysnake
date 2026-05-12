@@ -496,8 +496,12 @@ frameborder="1"
 <!-- /* PYGBAG_PATCH_JS */ -->
 <script>
   // === 0. Переводим pygbag-овские "Loading..." / "Ready to start..." на русский ===
+  // + после первого тапа меняем текст на "Подготовка...", иначе "Ready to start"
+  //   висит на экране всё время пока подгружается WASM-рантайм.
+  var userClicked = false;
   function ruify(text) {
     if (!text) return text;
+    if (userClicked)                           return 'Подготовка...';
     if (text.indexOf('Ready to start') !== -1) return 'Нажмите экран, чтобы начать';
     if (text.indexOf('Loading') !== -1)        return 'Загрузка...';
     return text;
@@ -509,11 +513,17 @@ frameborder="1"
     var translated = ruify(current);
     if (translated !== current) box.textContent = translated;
   }
-  // Сразу и при будущих изменениях текста pygbag-ом.
   document.addEventListener('DOMContentLoaded', patchInfobox);
   new MutationObserver(patchInfobox).observe(document.body, {
     subtree: true, childList: true, characterData: true
   });
+  function markClicked() {
+    if (userClicked) return;
+    userClicked = true;
+    patchInfobox();
+  }
+  document.addEventListener('click',      markClicked, { capture: true });
+  document.addEventListener('touchstart', markClicked, { capture: true });
 
   // === 1. Блокируем скролл/зум страницы ===
   document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
