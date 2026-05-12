@@ -23,7 +23,7 @@ from config import (
     FOOD_GOLDEN, FOOD_SLOW, SLOW_DELTA,
     C_FOOD, C_GOLDEN, C_SLOW, C_TEXT, C_SNAKE, C_DIM,
 )
-from game import Game, load_data, save_data
+from game import Game, load_data, save_data, _is_mobile_device
 from render import (
     draw_grid, draw_walls, draw_food, draw_bonus, draw_snake, draw_panel,
     draw_overlay_bg, draw_title, draw_label,
@@ -95,10 +95,14 @@ async def main():
         except Exception:
             return pygame.font.Font(None, size)
 
-    fb          = load_font(24, bold=True)
-    fs          = load_font(17)
-    fx_font     = load_font(20, bold=True)
-    fx_big_font = load_font(86, bold=True)
+    # На мобильных устройствах canvas масштабируется браузером, шрифты
+    # визуально становятся мелкими. Поднимаем все кегли в полтора раза.
+    _is_mobile  = _is_mobile_device()
+    _scale      = 1.45 if _is_mobile else 1.0
+    fb          = load_font(int(24 * _scale), bold=True)
+    fs          = load_font(int(17 * _scale))
+    fx_font     = load_font(int(20 * _scale), bold=True)
+    fx_big_font = load_font(int(86 * _scale), bold=True)
     START_LENGTH = 5  # совпадает с длиной змейки в Game.reset()
 
     # ---- Загрузка сохранения и применение размера поля ----
