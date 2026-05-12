@@ -33,15 +33,31 @@ OFFSET_X = (GAME_AREA_PX - CELL * DEFAULT_SIZE) // 2
 OFFSET_Y = PANEL_H + (GAME_AREA_PX - CELL * DEFAULT_SIZE) // 2
 
 
-def apply_size(size):
-    """Применяет выбранный размер поля: пересчитывает CELL и смещения."""
+def apply_size(size, dpad_h=0):
+    """
+    Применяет выбранный размер поля и режим управления.
+
+    dpad_h > 0 — внизу окна резервируется столько пикселей под
+    тач-крестовину, игровая сетка автоматически уменьшается.
+    """
     global COLS, ROWS, CELL, OFFSET_X, OFFSET_Y
     COLS = size
     ROWS = size
-    CELL = GAME_AREA_PX // size
-    margin   = (GAME_AREA_PX - CELL * size) // 2
-    OFFSET_X = margin
-    OFFSET_Y = PANEL_H + margin
+    available_w = GAME_AREA_PX
+    available_h = GAME_AREA_PX - dpad_h
+    CELL = min(available_w // size, available_h // size)
+    OFFSET_X = (available_w - CELL * size) // 2
+    OFFSET_Y = PANEL_H + (available_h - CELL * size) // 2
+
+
+# --- Тач-управление: режимы и геометрия крестовины -------------------
+
+TOUCH_MODES        = ["swipes", "dpad"]
+TOUCH_MODE_LABELS  = {"swipes": "Свайпы", "dpad": "Крестовина"}
+DEFAULT_TOUCH_MODE = "swipes"
+
+DPAD_AREA_H = 220   # высота зоны под крестовину (px в окне)
+DPAD_BUTTON = 70    # размер одной кнопки крестовины
 
 
 # --- Направления ----------------------------------------------------

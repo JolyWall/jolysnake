@@ -14,6 +14,7 @@ import pygame
 import config
 from config import (
     PANEL_H, WIN_W, WIN_H,
+    UP, DOWN, LEFT, RIGHT,
     C_GRID_A, C_GRID_B, C_GRID_BG, C_SNAKE, C_SNAKE_D, C_EYE, C_PUPIL,
     C_FOOD, C_FOOD_HL, C_GOLDEN, C_GOLDEN_HL, C_SLOW, C_SLOW_HL,
     C_TEXT, C_DIM, C_PANEL,
@@ -22,6 +23,8 @@ from config import (
     FOOD_GOLDEN, FOOD_SLOW,
     DIFFICULTY_ORDER, DIFFICULTIES,
     SIZES,
+    TOUCH_MODES, TOUCH_MODE_LABELS,
+    DPAD_AREA_H, DPAD_BUTTON,
 )
 
 
@@ -434,33 +437,49 @@ def build_main_menu_buttons():
     ]
 
 
-def build_settings(difficulty, board_size):
+def build_settings(difficulty, board_size, touch_mode):
     """
     Возвращает (diff_dropdown, walls_pos, bonuses_pos, revivals_pos,
-                size_dropdown, back_button).
+                size_dropdown, touch_dropdown, back_button).
+    Раскладка в две колонки: левая Lx, правая Rx, три ряда.
     *_pos — это (cx, cy) для построения кнопок-тумблеров снаружи
     (их подписи зависят от текущего состояния).
     """
-    cx = WIN_W // 2
+    Lx = WIN_W // 4        # центр левой колонки
+    Rx = WIN_W * 3 // 4    # центр правой колонки
+
+    # Ряд 1.
     diff_dd = Dropdown(
-        cx, 170,
+        Lx, 170,
         DIFFICULTY_ORDER,
         lambda k: DIFFICULTIES[k]["name"],
         difficulty,
         "difficulty",
     )
-    walls_pos    = (cx, 270)
-    bonuses_pos  = (cx, 370)
-    revivals_pos = (cx, 470)
+    walls_pos   = (Rx, 170)
+
+    # Ряд 2.
+    bonuses_pos  = (Lx, 330)
+    revivals_pos = (Rx, 330)
+
+    # Ряд 3.
     size_dd = Dropdown(
-        cx, 570,
+        Lx, 490,
         SIZES,
         lambda s: f"{s} × {s}",
         board_size,
         "board_size",
     )
-    back_btn = Button(cx, 670, "Назад", ("back", None))
-    return diff_dd, walls_pos, bonuses_pos, revivals_pos, size_dd, back_btn
+    touch_dd = Dropdown(
+        Rx, 490,
+        TOUCH_MODES,
+        lambda k: TOUCH_MODE_LABELS[k],
+        touch_mode,
+        "touch_mode",
+    )
+
+    back_btn = Button(WIN_W // 2, 620, "Назад", ("back", None))
+    return diff_dd, walls_pos, bonuses_pos, revivals_pos, size_dd, touch_dd, back_btn
 
 
 def build_walls_button(walls_pos, obstacles_on):
@@ -500,6 +519,81 @@ def build_pause_buttons():
         Button(cx - 150, y, "Продолжить", ("resume", None), w=240),
         Button(cx + 150, y, "В меню",     ("menu",   None), w=240),
     ]
+
+
+# ============================================================
+# ТАЧ-КРЕСТОВИНА
+# ============================================================
+
+def _dpad_centers():
+    """(cx, cy) центров четырёх кнопок крестовины."""
+    cx = WIN_W // 2
+    cy = WIN_H - DPAD_AREA_H // 2
+    B = DPAD_BUTTON
+    return {
+        "up":    (cx,     cy - B),
+        "down":  (cx,     cy + B),
+        "left":  (cx - B, cy),
+        "right": (cx + B, cy),
+    }
+
+
+def _dpad_rect(direction):
+    cx, cy = _dpad_centers()[direction]
+    B = DPAD_BUTTON
+    return pygame.Rect(cx - B // 2, cy - B // 2, B, B)
+
+
+def dpad_hit_direction(pos):
+    """Возвращает (dx, dy) или None — какое направление нажато на крестовине."""
+    mapping = {"up": UP, "down": DOWN, "left": LEFT, "right": RIGHT}
+    for d in ("up", "down", "left", "right"):
+        if _dpad_rect(d).collidepoint(pos):
+            return mapping[d]
+    return None
+
+
+def _draw_arrow(surface, direction, rect, color):
+    """Треугольник-стрелка внутри кнопки."""
+    cx, cy = rect.center
+    h = 14  # длина "оси" стрелки от центра до острия
+    w = 12  # половина базы (поперечная)
+    if direction == "up":
+        pts = [(cx, cy - h), (cx - w, cy + 6), (cx + w, cy + 6)]
+    elif direction == "down":
+        pts = [(cx, cy + h), (cx - w, cy - 6), (cx + w, cy - 6)]
+    elif direction == "left":
+        pts = [(cx - h, cy), (cx + 6, cy - w), (cx + 6, cy + w)]
+    else:  # right
+        pts = [(cx + h, cy), (cx - 6, cy - w), (cx - 6, cy + w)]
+    pygame.draw.polygon(surface, color, pts)
+
+
+def draw_dpad(surface, mouse_pos, pressed_dir=None):
+    """
+    Рисует крестовину 4 кнопок снизу. pressed_dir — направление, которое
+    сейчас активно (нажато / только что выбрано), подсвечивается ярче.
+    """
+    for d in ("up", "down", "left", "right"):
+        rect  = _dpad_rect(d)
+        hover = rect.collidepoint(mouse_pos)
+        active = (pressed_dir is not None and {
+            "up": UP, "down": DOWN, "left": LEFT, "right": RIGHT
+        }[d] == pressed_dir)
+        # Полупрозрачный фон: ярче при hover/active.
+        if active:
+            bg_alpha = 180
+        elif hover:
+            bg_alpha = 140
+        else:
+            bg_alpha = 90
+        s = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
+        pygame.draw.rect(s, (240, 240, 240, bg_alpha),
+                         s.get_rect(), border_radius=14)
+        pygame.draw.rect(s, (255, 255, 255, 200),
+                         s.get_rect(), width=2, border_radius=14)
+        surface.blit(s, (rect.x, rect.y))
+        _draw_arrow(surface, d, rect, (40, 40, 40))
 
 
 def build_revival_offer_buttons():

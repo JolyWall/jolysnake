@@ -108,6 +108,38 @@ JS = """
   document.addEventListener('click',      markClicked, { capture: true });
   document.addEventListener('touchstart', markClicked, { capture: true });
 
+  // === 0.5. Подгонка размера canvas под viewport с сохранением пропорций ===
+  // CSS-подход через min()/calc() работает не везде одинаково, поэтому
+  // дублируем расчёт в JS: на каждый resize вычисляем точные пиксели и
+  // выставляем inline-стили на canvas. Это перекрывает любой CSS извне.
+  var GAME_W = 672;
+  var GAME_H = 728;
+  function fitCanvas() {
+    var canvas = document.getElementById('canvas');
+    if (!canvas) return;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var scale = Math.min(vw / GAME_W, vh / GAME_H);
+    var w = Math.floor(GAME_W * scale);
+    var h = Math.floor(GAME_H * scale);
+    var setI = function(prop, val) {
+      canvas.style.setProperty(prop, val, 'important');
+    };
+    setI('position', 'fixed');
+    setI('left', Math.floor((vw - w) / 2) + 'px');
+    setI('top',  Math.floor((vh - h) / 2) + 'px');
+    setI('width',  w + 'px');
+    setI('height', h + 'px');
+    setI('transform', 'none');
+    setI('margin', '0');
+    setI('right', 'auto');
+    setI('bottom', 'auto');
+  }
+  window.addEventListener('resize', fitCanvas);
+  window.addEventListener('load', fitCanvas);
+  // pygbag может создать/изменить canvas позднее — перепроверяем периодически.
+  setInterval(fitCanvas, 500);
+
   // === 1. Блокируем скролл/зум страницы ===
   document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
@@ -143,8 +175,16 @@ JS = """
     swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, { passive: false });
 
+  function swipesEnabled() {
+    // Python пишет 'dpad' или 'swipes' в localStorage. В режиме крестовины
+    // синтезировать стрелки от свайпов не нужно — управление только кнопками.
+    try { return localStorage.getItem('snake_touch_mode') !== 'dpad'; }
+    catch (e) { return true; }
+  }
+
   document.addEventListener('touchmove', function(e){
     if (!swipeStart || e.touches.length !== 1) return;
+    if (!swipesEnabled()) return;
     var t = e.touches[0];
     var dx = t.clientX - swipeStart.x;
     var dy = t.clientY - swipeStart.y;
@@ -166,17 +206,33 @@ MARK_CSS = "/* PYGBAG_PATCH_CSS */"
 MARK_JS  = "/* PYGBAG_PATCH_JS */"
 
 
+import re
+
+
+def _strip_old(src, mark):
+    """Удаляет старый блок патча с этим маркером (если он есть)."""
+    # Блок начинается на <!-- {mark} --> и заканчивается на следующий </style>
+    # или </script> в зависимости от типа.
+    pattern = re.compile(
+        rf"<!--\s*{re.escape(mark)}\s*-->\s*<(style|script)>.*?</\1>\s*",
+        re.DOTALL,
+    )
+    return pattern.sub("", src)
+
+
 def patch(path):
     p = Path(path)
     src = p.read_text(encoding="utf-8")
 
+    # Чистим старые вставки (если есть), вставляем свежие.
+    src = _strip_old(src, MARK_CSS)
+    src = _strip_old(src, MARK_JS)
+
     css_block = f"<!-- {MARK_CSS} -->{CSS}"
     js_block  = f"<!-- {MARK_JS} -->{JS}"
 
-    if MARK_CSS not in src:
-        src = src.replace("</head>", css_block + "</head>", 1)
-    if MARK_JS not in src:
-        src = src.replace("</body>", js_block + "</body>", 1)
+    src = src.replace("</head>", css_block + "</head>", 1)
+    src = src.replace("</body>", js_block + "</body>", 1)
 
     p.write_text(src, encoding="utf-8")
     print(f"Patched: {p}")

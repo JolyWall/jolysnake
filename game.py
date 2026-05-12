@@ -14,6 +14,7 @@ from config import (
     FOOD_NORMAL, FOOD_GOLDEN, FOOD_SLOW,
     GOLDEN_TTL, SLOW_TTL, BONUS_CHANCE,
     DEFAULT_SIZE, SIZES,
+    TOUCH_MODES, DEFAULT_TOUCH_MODE,
 )
 
 
@@ -30,6 +31,7 @@ DEFAULT_DATA = {
     "bonuses":           True,
     "revivals":          True,
     "board_size":        DEFAULT_SIZE,
+    "touch_mode":        DEFAULT_TOUCH_MODE,
 }
 
 
@@ -40,6 +42,8 @@ def _validate(data):
         data["difficulty"] = DEFAULT_DATA["difficulty"]
     if data.get("board_size") not in SIZES:
         data["board_size"] = DEFAULT_DATA["board_size"]
+    if data.get("touch_mode") not in TOUCH_MODES:
+        data["touch_mode"] = DEFAULT_DATA["touch_mode"]
     data["obstacles"] = bool(data.get("obstacles", False))
     data["bonuses"]   = bool(data.get("bonuses", True))
     data["revivals"]  = bool(data.get("revivals", True))

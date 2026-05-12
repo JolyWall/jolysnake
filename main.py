@@ -22,6 +22,7 @@ from config import (
     REVIVAL_INVINCIBLE_SEC, REVIVAL_TIMER_SEC, REVIVAL_COUNTDOWN_SEC,
     FOOD_GOLDEN, FOOD_SLOW, SLOW_DELTA,
     C_FOOD, C_GOLDEN, C_SLOW, C_TEXT, C_SNAKE, C_DIM,
+    DPAD_AREA_H,
 )
 from game import Game, load_data, save_data
 from render import (
@@ -32,6 +33,7 @@ from render import (
     build_gameover_buttons, build_pause_buttons,
     build_revival_offer_buttons, build_math_answer_buttons,
     draw_time_bar, draw_countdown_number, draw_math_problem,
+    draw_dpad, dpad_hit_direction,
 )
 from effects import Effects
 
@@ -111,7 +113,9 @@ async def main():
     bonuses_on        = data["bonuses"]
     revivals_on       = data["revivals"]
     board_size        = data["board_size"]
-    config.apply_size(board_size)
+    touch_mode        = data["touch_mode"]
+    config.apply_size(board_size,
+                      dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
 
     # Создаём пустую игру, чтобы было что рисовать на фоне меню.
     game       = Game()
@@ -123,6 +127,17 @@ async def main():
     # Какой дропдаун сейчас раскрыт на экране настроек: "difficulty" / "board_size" / None.
     open_dropdown = None
 
+    def _sync_touch_mode_to_js():
+        """Передаём текущий режим тач-управления в localStorage,
+        чтобы JS-перехватчик свайпов знал, отключаться ему или нет.
+        На десктопе platform.window отсутствует — просто игнорируем."""
+        try:
+            import platform as _pf
+            if hasattr(_pf, "window"):
+                _pf.window.localStorage.setItem("snake_touch_mode", touch_mode)
+        except Exception:
+            pass
+
     def persist():
         save_data({
             "best":              best,
@@ -133,7 +148,12 @@ async def main():
             "bonuses":           bonuses_on,
             "revivals":          revivals_on,
             "board_size":        board_size,
+            "touch_mode":        touch_mode,
         })
+        _sync_touch_mode_to_js()
+
+    # Один раз на старте — выставляем JS-флаг.
+    _sync_touch_mode_to_js()
 
     tick_rate     = DIFFICULTIES[difficulty]["start"]
     tick_interval = 1.0 / tick_rate
@@ -181,7 +201,8 @@ async def main():
         """Запускает новую игру с текущими настройками."""
         nonlocal tick_rate, tick_interval, tick_accum, prev_snake, state, milestone
         nonlocal glitch_t, used_revival, invincible_left
-        config.apply_size(board_size)
+        config.apply_size(board_size,
+                          dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
         cfg = DIFFICULTIES[difficulty]
         walls = WALLS_COUNT if obstacles_on else 0
         game.reset(walls_count=walls, bonuses_enabled=bonuses_on)
@@ -249,13 +270,13 @@ async def main():
         # — UI будет всё равно нужен для отрисовки этого кадра.
         # ----------------------------------------------------------
         def build_settings_ui():
-            d, wp, bp, rp, s, b = build_settings(difficulty, board_size)
+            d, wp, bp, rp, s, t, b = build_settings(difficulty, board_size, touch_mode)
             w  = build_walls_button(wp, obstacles_on)
             bn = build_bonuses_button(bp, bonuses_on)
             r  = build_revivals_button(rp, revivals_on)
-            return d, w, bn, r, s, b
+            return d, w, bn, r, s, t, b
 
-        diff_dd, walls_btn, bonuses_btn, revivals_btn, size_dd, back_btn = build_settings_ui()
+        diff_dd, walls_btn, bonuses_btn, revivals_btn, size_dd, touch_dd, back_btn = build_settings_ui()
 
         # ----------------------------------------------------------
         # ОБРАБОТКА ВВОДА
@@ -265,17 +286,18 @@ async def main():
                 running = False
                 break
 
-            # ===== Тач: свайпы во время игры =====
+            # ===== Тач: свайпы во время игры (если выбран режим свайпов) =====
             # Меню/кнопки работают через MOUSEBUTTONDOWN (SDL автоматически
             # конвертирует тап в клик), сюда попадают только жесты в STATE_PLAYING.
+            # В режиме крестовины свайпы игнорируем — управление только кнопками.
             if event.type == pygame.FINGERDOWN:
                 swipe_start    = (event.x, event.y)
                 swipe_consumed = False
             elif event.type == pygame.FINGERMOTION:
-                # Срабатываем СРАЗУ как палец прошёл порог — не ждём отпускания.
                 if (swipe_start is not None
                         and not swipe_consumed
-                        and state == STATE_PLAYING):
+                        and state == STATE_PLAYING
+                        and touch_mode == "swipes"):
                     dx = event.x - swipe_start[0]
                     dy = event.y - swipe_start[1]
                     if abs(dx) > SWIPE_THRESHOLD or abs(dy) > SWIPE_THRESHOLD:
@@ -283,12 +305,9 @@ async def main():
                             game.steer(RIGHT if dx > 0 else LEFT)
                         else:
                             game.steer(DOWN if dy > 0 else UP)
-                        swipe_consumed = True
-                        # Сдвигаем "начало" к текущей точке — следующий свайп
-                        # внутри этого же касания сможет сработать снова,
-                        # если игрок продолжит вести палец дальше.
-                        swipe_start    = (event.x, event.y)
-                        swipe_consumed = False
+                        # Сдвигаем "начало" к текущей точке — серия свайпов
+                        # в одном жесте (зигзаг) ловится без отрыва пальца.
+                        swipe_start = (event.x, event.y)
             elif event.type == pygame.FINGERUP:
                 swipe_start    = None
                 swipe_consumed = False
@@ -317,7 +336,16 @@ async def main():
                         chosen = size_dd.hit_option(event.pos)
                         if chosen is not None:
                             board_size = chosen
-                            config.apply_size(board_size)
+                            config.apply_size(board_size,
+                                              dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
+                            persist()
+                        open_dropdown = None
+                    elif open_dropdown == "touch_mode":
+                        chosen = touch_dd.hit_option(event.pos)
+                        if chosen is not None:
+                            touch_mode = chosen
+                            config.apply_size(board_size,
+                                              dpad_h=DPAD_AREA_H if touch_mode == "dpad" else 0)
                             persist()
                         open_dropdown = None
                     else:
@@ -326,6 +354,8 @@ async def main():
                             open_dropdown = "difficulty"
                         elif size_dd.hit_button(event.pos):
                             open_dropdown = "board_size"
+                        elif touch_dd.hit_button(event.pos):
+                            open_dropdown = "touch_mode"
                         elif walls_btn.hit(event.pos):
                             obstacles_on = not obstacles_on
                             persist()
@@ -356,6 +386,12 @@ async def main():
                             elif kind == "menu":
                                 state = STATE_MAIN_MENU
                             break
+
+                elif state == STATE_PLAYING and touch_mode == "dpad":
+                    # Тап по крестовине = поворот.
+                    direction = dpad_hit_direction(event.pos)
+                    if direction is not None:
+                        game.steer(direction)
 
                 elif state == STATE_REVIVAL_OFFER:
                     for b in revival_offer_btns:
@@ -543,6 +579,10 @@ async def main():
                    dying=dying_progress, glitch=glitch_progress,
                    visible=snake_visible)
         fx.draw(screen, fx_font)
+        # Крестовина — видна во время игры и паузы, если выбрана.
+        if touch_mode == "dpad" and state in (STATE_PLAYING, STATE_PAUSED,
+                                              STATE_DYING, STATE_GAMEOVER):
+            draw_dpad(screen, mouse_pos)
         draw_panel(screen, game.score, best,
                    DIFFICULTIES[difficulty]["name"],
                    milestone, best_milestone, fb, fs)
@@ -550,22 +590,26 @@ async def main():
         if state == STATE_MAIN_MENU:
             draw_overlay_bg(screen)
             draw_title(screen, "ЗМЕЙКА",
-                       "Стрелки · WASD · свайпы",
+                       "Стрелки · WASD · Свайпы",
                        WIN_H // 2 - 180, fb, fs)
             for b in main_menu_btns:
                 b.draw(screen, fs, mouse_pos)
 
         elif state == STATE_SETTINGS:
-            # Пересобираем UI с актуальными значениями (могли поменяться
-            # любые тумблеры или дропдауны в обработке кликов этого же кадра).
-            diff_dd, walls_btn, bonuses_btn, revivals_btn, size_dd, back_btn = build_settings_ui()
+            diff_dd, walls_btn, bonuses_btn, revivals_btn, size_dd, touch_dd, back_btn = build_settings_ui()
             draw_overlay_bg(screen)
             draw_title(screen, "НАСТРОЙКИ", "", 75, fb, fs)
-            draw_label(screen, "Сложность",        WIN_W // 2, 135, fs)
-            draw_label(screen, "Препятствия",      WIN_W // 2, 235, fs)
-            draw_label(screen, "Бонусные яблоки",  WIN_W // 2, 335, fs)
-            draw_label(screen, "Возрождение",      WIN_W // 2, 435, fs)
-            draw_label(screen, "Размер поля",      WIN_W // 2, 535, fs)
+            Lx = WIN_W // 4
+            Rx = WIN_W * 3 // 4
+            # Ряд 1
+            draw_label(screen, "Сложность",        Lx, 135, fs)
+            draw_label(screen, "Препятствия",      Rx, 135, fs)
+            # Ряд 2
+            draw_label(screen, "Бонусные яблоки",  Lx, 295, fs)
+            draw_label(screen, "Возрождение",      Rx, 295, fs)
+            # Ряд 3
+            draw_label(screen, "Размер поля",      Lx, 455, fs)
+            draw_label(screen, "Управление",       Rx, 455, fs)
             diff_dd.draw_button(screen, fs, mouse_pos,
                                 expanded=(open_dropdown == "difficulty"))
             walls_btn.draw(screen, fs, mouse_pos)
@@ -573,6 +617,8 @@ async def main():
             revivals_btn.draw(screen, fs, mouse_pos)
             size_dd.draw_button(screen, fs, mouse_pos,
                                 expanded=(open_dropdown == "board_size"))
+            touch_dd.draw_button(screen, fs, mouse_pos,
+                                 expanded=(open_dropdown == "touch_mode"))
             back_btn.draw(screen, fs, mouse_pos)
             if open_dropdown is not None:
                 draw_overlay_bg(screen, alpha=110)
@@ -582,6 +628,9 @@ async def main():
                 elif open_dropdown == "board_size":
                     size_dd.draw_button(screen, fs, mouse_pos, expanded=True)
                     size_dd.draw_options(screen, fs, mouse_pos)
+                elif open_dropdown == "touch_mode":
+                    touch_dd.draw_button(screen, fs, mouse_pos, expanded=True)
+                    touch_dd.draw_options(screen, fs, mouse_pos)
 
         elif state == STATE_GAMEOVER:
             draw_overlay_bg(screen)
