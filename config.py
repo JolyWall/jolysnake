@@ -8,10 +8,38 @@ OFFSET_X/OFFSET_Y, чтобы поле было отцентровано в ок
 
 # --- Окно (фиксированное) -------------------------------------------
 
-# Внутреннее разрешение рендера. Больше = чётче на десктопе, потому что
-# браузер делает downscale вместо upscale. Все хардкод-координаты в коде
-# домножаются на SCALE, чтобы при смене этого числа всё пересчиталось.
-SCALE = 2
+def _detect_mobile_for_scale():
+    """
+    Дёргаем navigator (только в pygbag-сборке через platform.window).
+    На локальном десктопе или ошибке — False.
+    """
+    try:
+        import platform as _pf
+        if not hasattr(_pf, "window"):
+            return False
+        try:
+            if int(_pf.window.navigator.maxTouchPoints or 0) > 0:
+                return True
+        except Exception:
+            pass
+        try:
+            ua = str(_pf.window.navigator.userAgent or "").lower()
+            return any(kw in ua for kw in ("iphone", "ipad", "ipod",
+                                           "android", "mobile"))
+        except Exception:
+            pass
+        return False
+    except Exception:
+        return False
+
+
+# Внутреннее разрешение рендера.
+#   Десктоп: SCALE=2 — браузер делает upscale 1.5×, нативный рендер на 2×
+#            компенсирует это и даёт чёткий текст.
+#   Мобильный: SCALE=1 — браузер и так делает downscale (canvas 672 → 393),
+#            всё чётко без удвоения. При SCALE=2 на мобильнике в 4 раза
+#            больше пиксельной работы за кадр — заметная просадка FPS.
+SCALE = 1 if _detect_mobile_for_scale() else 2
 
 PANEL_H = 56 * SCALE
 GAME_AREA_PX = 672 * SCALE        # сторона квадратной игровой зоны
