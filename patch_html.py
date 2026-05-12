@@ -28,7 +28,10 @@ CSS = f"""
     width: 100%;
     -webkit-user-select: none;
     user-select: none;
+    /* Тёмно-зелёный фон под игру — совпадает с тоном панели в config.py. */
+    background-color: #325a28 !important;
   }}
+
   /* Растягиваем canvas во viewport, сохраняя пропорции игры. */
   canvas.emscripten {{
     position: fixed !important;
@@ -40,11 +43,61 @@ CSS = f"""
     z-index: 5 !important;
   }}
   canvas {{ touch-action: none !important; }}
+
+  /* Перебиваем pygbag-овский кричащий зелёный квадрат с синим текстом. */
+  #infobox {{
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    background: rgba(20, 30, 16, 0.92) !important;
+    color: #ffffff !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "DejaVu Sans", sans-serif !important;
+    font-size: 17px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.3px !important;
+    text-align: center !important;
+    padding: 22px 36px !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+    min-width: 220px !important;
+    z-index: 10 !important;
+    animation: snakeloader-pulse 1.6s ease-in-out infinite !important;
+  }}
+
+  @keyframes snakeloader-pulse {{
+    0%, 100% {{ opacity: 1.0; }}
+    50%      {{ opacity: 0.55; }}
+  }}
+
+  /* Скрываем дефолтный progress bar / status строку pygbag-а. */
+  #transfer {{ background: transparent !important; }}
 </style>
 """
 
 JS = """
 <script>
+  // === 0. Переводим pygbag-овские "Loading..." / "Ready to start..." на русский ===
+  function ruify(text) {
+    if (!text) return text;
+    if (text.indexOf('Ready to start') !== -1) return 'Нажмите экран, чтобы начать';
+    if (text.indexOf('Loading') !== -1)        return 'Загрузка...';
+    return text;
+  }
+  function patchInfobox() {
+    var box = document.getElementById('infobox');
+    if (!box) return;
+    var current = box.textContent.trim();
+    var translated = ruify(current);
+    if (translated !== current) box.textContent = translated;
+  }
+  // Сразу и при будущих изменениях текста pygbag-ом.
+  document.addEventListener('DOMContentLoaded', patchInfobox);
+  new MutationObserver(patchInfobox).observe(document.body, {
+    subtree: true, childList: true, characterData: true
+  });
+
   // === 1. Блокируем скролл/зум страницы ===
   document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
