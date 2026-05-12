@@ -11,7 +11,7 @@ import pygame
 
 import config
 from config import (
-    WIN_W, WIN_H, PANEL_H, FPS,
+    WIN_W, WIN_H, PANEL_H, FPS, SCALE,
     UP, DOWN, LEFT, RIGHT,
     DIFFICULTIES, WALLS_COUNT,
     STATE_MAIN_MENU, STATE_SETTINGS, STATE_PLAYING,
@@ -95,15 +95,16 @@ async def main():
         except Exception:
             return pygame.font.Font(None, size)
 
-    # На мобильных устройствах canvas масштабируется браузером, шрифты
-    # визуально становятся мелкими. Поднимаем все кегли в полтора раза.
+    # На мобильных устройствах canvas сжимается браузером сильнее, чем на ПК,
+    # поэтому шрифты дополнительно увеличиваем. Базовые кегли умножены на
+    # SCALE — общий множитель внутреннего разрешения рендера.
     _is_mobile  = _is_mobile_device()
     _scale      = 1.45 if _is_mobile else 1.0
-    fb           = load_font(int(24 * _scale), bold=True)
-    fs           = load_font(int(17 * _scale))
-    fx_font      = load_font(int(20 * _scale), bold=True)
-    fx_big_font  = load_font(int(86 * _scale), bold=True)  # отсчёт 3-2-1, ×N
-    fx_math_font = load_font(int(50 * _scale), bold=True)  # текст примера
+    fb           = load_font(int(24 * _scale * SCALE), bold=True)
+    fs           = load_font(int(17 * _scale * SCALE))
+    fx_font      = load_font(int(20 * _scale * SCALE), bold=True)
+    fx_big_font  = load_font(int(86 * _scale * SCALE), bold=True)  # отсчёт 3-2-1, ×N
+    fx_math_font = load_font(int(50 * _scale * SCALE), bold=True)  # текст примера
     START_LENGTH = 5  # совпадает с длиной змейки в Game.reset()
 
     # ---- Загрузка сохранения и применение размера поля ----
@@ -472,17 +473,17 @@ async def main():
                     if eaten == FOOD_GOLDEN:
                         ex, ey = cell_center_px(bonus_pos_before)
                         fx.burst(ex, ey, C_GOLDEN, count=14)
-                        fx.popup(ex, ey - 6, "+3", C_GOLDEN)
+                        fx.popup(ex, ey - 6 * SCALE, "+3", C_GOLDEN)
                     elif eaten == FOOD_SLOW:
                         ex, ey = cell_center_px(bonus_pos_before)
                         fx.burst(ex, ey, C_SLOW, count=12)
-                        fx.popup(ex, ey - 6, "+1", C_SLOW)
+                        fx.popup(ex, ey - 6 * SCALE, "+1", C_SLOW)
                         tick_rate     = max(tick_rate - SLOW_DELTA, cfg["start"])
                         tick_interval = 1.0 / tick_rate
                     else:
                         ex, ey = cell_center_px(food_pos_before)
                         fx.burst(ex, ey, C_FOOD, count=10)
-                        fx.popup(ex, ey - 6, "+1", C_TEXT)
+                        fx.popup(ex, ey - 6 * SCALE, "+1", C_TEXT)
                     if game.apples_eaten % cfg["step"] == 0:
                         tick_rate     = min(tick_rate + 2, cfg["max"])
                         tick_interval = 1.0 / tick_rate
@@ -580,25 +581,25 @@ async def main():
             draw_overlay_bg(screen)
             draw_title(screen, "ЗМЕЙКА",
                        "Стрелки · WASD · Свайпы",
-                       WIN_H // 2 - 180, fb, fs)
+                       WIN_H // 2 - 180 * SCALE, fb, fs)
             for b in main_menu_btns:
                 b.draw(screen, fs, mouse_pos)
 
         elif state == STATE_SETTINGS:
             diff_dd, walls_btn, bonuses_btn, revivals_btn, size_dd, touch_dd, back_btn = build_settings_ui()
             draw_overlay_bg(screen)
-            draw_title(screen, "НАСТРОЙКИ", "", 75, fb, fs)
+            draw_title(screen, "НАСТРОЙКИ", "", 75 * SCALE, fb, fs)
             Lx = WIN_W // 4
             Rx = WIN_W * 3 // 4
             # Ряд 1
-            draw_label(screen, "Сложность",        Lx, 135, fs)
-            draw_label(screen, "Препятствия",      Rx, 135, fs)
+            draw_label(screen, "Сложность",        Lx, 135 * SCALE, fs)
+            draw_label(screen, "Препятствия",      Rx, 135 * SCALE, fs)
             # Ряд 2
-            draw_label(screen, "Бонусные яблоки",  Lx, 295, fs)
-            draw_label(screen, "Возрождение",      Rx, 295, fs)
+            draw_label(screen, "Бонусные яблоки",  Lx, 295 * SCALE, fs)
+            draw_label(screen, "Возрождение",      Rx, 295 * SCALE, fs)
             # Ряд 3
-            draw_label(screen, "Размер поля",      Lx, 455, fs)
-            draw_label(screen, "Управление",       Rx, 455, fs)
+            draw_label(screen, "Размер поля",      Lx, 455 * SCALE, fs)
+            draw_label(screen, "Управление",       Rx, 455 * SCALE, fs)
             diff_dd.draw_button(screen, fs, mouse_pos,
                                 expanded=(open_dropdown == "difficulty"))
             walls_btn.draw(screen, fs, mouse_pos)
@@ -626,15 +627,15 @@ async def main():
             # Заголовок и счёт.
             draw_title(screen, "КОНЕЦ ИГРЫ",
                        f"Счёт: {game.score}",
-                       WIN_H // 2 - 140, fb, fs)
+                       WIN_H // 2 - 140 * SCALE, fb, fs)
             # Два рекорда — без возрождения и с ним.
             line1 = f"Рекорд без возрождения: {best}"
             line2 = f"Рекорд с возрождением:  {best_with_revival}"
             s1 = fs.render(line1, True, C_DIM)
             s2 = fs.render(line2, True, C_DIM)
-            surface_y = WIN_H // 2 - 30
+            surface_y = WIN_H // 2 - 30 * SCALE
             screen.blit(s1, ((WIN_W - s1.get_width()) // 2, surface_y))
-            screen.blit(s2, ((WIN_W - s2.get_width()) // 2, surface_y + 30))
+            screen.blit(s2, ((WIN_W - s2.get_width()) // 2, surface_y + 30 * SCALE))
             # Кнопки рисуем последними, чтобы они были поверх (но теперь
             # они и так не накладываются — текст выше).
             # Build_gameover_buttons возвращает их на WIN_H//2 + 40 = 404,
@@ -645,7 +646,7 @@ async def main():
         elif state == STATE_PAUSED:
             draw_overlay_bg(screen)
             draw_title(screen, "ПАУЗА", "Space / Esc — продолжить",
-                       WIN_H // 2 - 60, fb, fs)
+                       WIN_H // 2 - 60 * SCALE, fb, fs)
             for b in pause_btns:
                 b.draw(screen, fs, mouse_pos)
 
@@ -653,7 +654,7 @@ async def main():
             draw_overlay_bg(screen)
             draw_title(screen, "ВТОРОЙ ШАНС",
                        "Решите пример, чтобы вернуться в игру",
-                       WIN_H // 2 - 100, fb, fs)
+                       WIN_H // 2 - 100 * SCALE, fb, fs)
             for b in revival_offer_btns:
                 b.draw(screen, fs, mouse_pos)
 

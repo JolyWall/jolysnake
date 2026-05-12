@@ -309,8 +309,8 @@ function show_infobox() {
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
-    width: min(100vw, calc(100vh * 672 / 728)) !important;
-    height: min(100vh, calc(100vw * 728 / 672)) !important;
+    width: min(100vw, calc(100vh * 1344 / 1456)) !important;
+    height: min(100vh, calc(100vw * 1456 / 1344)) !important;
     z-index: 5 !important;
   }
   canvas { touch-action: none !important; }
@@ -572,8 +572,8 @@ frameborder="1"
   // CSS-подход через min()/calc() работает не везде одинаково, поэтому
   // дублируем расчёт в JS: на каждый resize вычисляем точные пиксели и
   // выставляем inline-стили на canvas. Это перекрывает любой CSS извне.
-  var GAME_W = 672;
-  var GAME_H = 728;
+  var GAME_W = 1344;
+  var GAME_H = 1456;
   // Когда активна крестовина — резервируем столько px снизу,
   // и canvas центрируется только в верхней части viewport.
   var DPAD_RESERVE = 240;

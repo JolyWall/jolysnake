@@ -13,7 +13,7 @@ import pygame
 
 import config
 from config import (
-    PANEL_H, WIN_W, WIN_H,
+    PANEL_H, WIN_W, WIN_H, SCALE,
     UP, DOWN, LEFT, RIGHT,
     C_GRID_A, C_GRID_B, C_GRID_BG, C_SNAKE, C_SNAKE_D, C_EYE, C_PUPIL,
     C_FOOD, C_FOOD_HL, C_GOLDEN, C_GOLDEN_HL, C_SLOW, C_SLOW_HL,
@@ -253,27 +253,30 @@ def draw_snake(surface, snake, prev_snake, t, dying=0.0, glitch=0.0, visible=Tru
 def draw_panel(surface, score, best, difficulty_name,
                cur_mult, best_mult, fb, fs):
     surface.fill(C_PANEL, pygame.Rect(0, 0, WIN_W, PANEL_H))
+    pad_x = 14 * SCALE
+    pad_y = 12 * SCALE
+    gap   = 8 * SCALE
 
     # ---- Слева: "Счёт: N  ×M" ----
     score_surf = fb.render(f"Счёт: {score}", True, C_TEXT)
-    surface.blit(score_surf, (14, 12))
+    surface.blit(score_surf, (pad_x, pad_y))
     if cur_mult > 1:
         mult_surf = fs.render(f"×{cur_mult}", True, C_GOLDEN)
-        surface.blit(mult_surf, (14 + score_surf.get_width() + 8, 18))
+        surface.blit(mult_surf, (pad_x + score_surf.get_width() + gap, 18 * SCALE))
 
     # ---- По центру: название сложности ----
     diff_txt = fs.render(difficulty_name, True, C_DIM)
     surface.blit(diff_txt,
-                 ((WIN_W - diff_txt.get_width()) // 2, 18))
+                 ((WIN_W - diff_txt.get_width()) // 2, 18 * SCALE))
 
     # ---- Справа: "×M  Рекорд: B" ----
     best_str  = f"Рекорд: {best}"
     best_surf = fs.render(best_str, True, C_DIM)
-    bx = WIN_W - best_surf.get_width() - 14
-    surface.blit(best_surf, (bx, 18))
+    bx = WIN_W - best_surf.get_width() - pad_x
+    surface.blit(best_surf, (bx, 18 * SCALE))
     if best_mult > 1:
         bm_surf = fs.render(f"×{best_mult}", True, C_GOLDEN)
-        surface.blit(bm_surf, (bx - bm_surf.get_width() - 8, 18))
+        surface.blit(bm_surf, (bx - bm_surf.get_width() - gap, 18 * SCALE))
 
 
 def draw_overlay_bg(surface, alpha=170):
@@ -287,7 +290,7 @@ def draw_title(surface, title, subtitle, y_title, fb, fs):
     surface.blit(s1, ((WIN_W - s1.get_width()) // 2, y_title))
     if subtitle:
         s2 = fs.render(subtitle, True, C_DIM)
-        surface.blit(s2, ((WIN_W - s2.get_width()) // 2, y_title + 38))
+        surface.blit(s2, ((WIN_W - s2.get_width()) // 2, y_title + 38 * SCALE))
 
 
 def draw_label(surface, text, cx, cy, font, color=C_DIM):
@@ -300,8 +303,8 @@ def draw_label(surface, text, cx, cy, font, color=C_DIM):
 # ============================================================
 
 class Button:
-    W = 280
-    H = 48
+    W = 280 * SCALE
+    H = 48 * SCALE
 
     def __init__(self, cx, cy, label, action, active=False, w=None, h=None):
         w = w or self.W
@@ -340,8 +343,8 @@ class Dropdown:
     в главном цикле, через Settings/Menu state. Это нужно потому, что
     при открытом дропдауне остальной UI должен быть неактивен.
     """
-    W = 280
-    H = 48
+    W = 280 * SCALE
+    H = 48 * SCALE
 
     def __init__(self, cx, cy, options, label_for, current_key, key_id):
         self.rect = pygame.Rect(cx - self.W // 2, cy - self.H // 2,
@@ -392,9 +395,9 @@ class Dropdown:
                            self.rect.centery - txt.get_height() // 2))
         # Треугольник-индикатор справа — рисуем сами, чтобы не зависеть
         # от наличия глифа в системном шрифте.
-        cx = self.rect.right - 18
+        cx = self.rect.right - 18 * SCALE
         cy = self.rect.centery
-        s  = 6
+        s  = 6 * SCALE
         if expanded:
             pts = [(cx - s, cy + s // 2),
                    (cx + s, cy + s // 2),
@@ -428,11 +431,11 @@ class Dropdown:
 
 def build_main_menu_buttons():
     cx = WIN_W // 2
-    y0 = WIN_H // 2 - 60
+    y0 = WIN_H // 2 - 60 * SCALE
     return [
-        Button(cx, y0,           "Играть",    ("play",     None)),
-        Button(cx, y0 + 60,      "Настройки", ("settings", None)),
-        Button(cx, y0 + 120,     "Выход",     ("quit",     None)),
+        Button(cx, y0,                  "Играть",    ("play",     None)),
+        Button(cx, y0 + 60 * SCALE,     "Настройки", ("settings", None)),
+        Button(cx, y0 + 120 * SCALE,    "Выход",     ("quit",     None)),
     ]
 
 
@@ -446,38 +449,39 @@ def build_settings(difficulty, board_size, touch_mode):
     """
     Lx = WIN_W // 4        # центр левой колонки
     Rx = WIN_W * 3 // 4    # центр правой колонки
+    S  = SCALE
 
     # Ряд 1.
     diff_dd = Dropdown(
-        Lx, 170,
+        Lx, 170 * S,
         DIFFICULTY_ORDER,
         lambda k: DIFFICULTIES[k]["name"],
         difficulty,
         "difficulty",
     )
-    walls_pos   = (Rx, 170)
+    walls_pos   = (Rx, 170 * S)
 
     # Ряд 2.
-    bonuses_pos  = (Lx, 330)
-    revivals_pos = (Rx, 330)
+    bonuses_pos  = (Lx, 330 * S)
+    revivals_pos = (Rx, 330 * S)
 
     # Ряд 3.
     size_dd = Dropdown(
-        Lx, 490,
+        Lx, 490 * S,
         SIZES,
         lambda s: f"{s} × {s}",
         board_size,
         "board_size",
     )
     touch_dd = Dropdown(
-        Rx, 490,
+        Rx, 490 * S,
         TOUCH_MODES,
         lambda k: TOUCH_MODE_LABELS[k],
         touch_mode,
         "touch_mode",
     )
 
-    back_btn = Button(WIN_W // 2, 620, "Назад", ("back", None))
+    back_btn = Button(WIN_W // 2, 620 * S, "Назад", ("back", None))
     return diff_dd, walls_pos, bonuses_pos, revivals_pos, size_dd, touch_dd, back_btn
 
 
@@ -504,19 +508,19 @@ def build_revivals_button(revivals_pos, revivals_on):
 
 def build_gameover_buttons():
     cx = WIN_W // 2
-    y  = WIN_H // 2 + 80
+    y  = WIN_H // 2 + 80 * SCALE
     return [
-        Button(cx - 150, y, "Заново", ("restart", None), w=240),
-        Button(cx + 150, y, "В меню", ("menu",    None), w=240),
+        Button(cx - 150 * SCALE, y, "Заново", ("restart", None), w=240 * SCALE),
+        Button(cx + 150 * SCALE, y, "В меню", ("menu",    None), w=240 * SCALE),
     ]
 
 
 def build_pause_buttons():
     cx = WIN_W // 2
-    y  = WIN_H // 2 + 40
+    y  = WIN_H // 2 + 40 * SCALE
     return [
-        Button(cx - 150, y, "Продолжить", ("resume", None), w=240),
-        Button(cx + 150, y, "В меню",     ("menu",   None), w=240),
+        Button(cx - 150 * SCALE, y, "Продолжить", ("resume", None), w=240 * SCALE),
+        Button(cx + 150 * SCALE, y, "В меню",     ("menu",   None), w=240 * SCALE),
     ]
 
 
@@ -526,19 +530,19 @@ def build_pause_buttons():
 
 def build_revival_offer_buttons():
     cx = WIN_W // 2
-    y  = WIN_H // 2 + 60
+    y  = WIN_H // 2 + 60 * SCALE
     return [
-        Button(cx - 150, y, "Возродиться", ("accept_revive", None), w=240),
-        Button(cx + 150, y, "Отказаться",  ("decline_revive", None), w=240),
+        Button(cx - 150 * SCALE, y, "Возродиться", ("accept_revive", None), w=240 * SCALE),
+        Button(cx + 150 * SCALE, y, "Отказаться",  ("decline_revive", None), w=240 * SCALE),
     ]
 
 
 def build_math_answer_buttons(options):
     """Четыре кнопки с вариантами в сетке 2×2 по центру."""
     cx = WIN_W // 2
-    cy = WIN_H // 2 + 80
-    dx = 130
-    dy = 32
+    cy = WIN_H // 2 + 80 * SCALE
+    dx = 130 * SCALE
+    dy = 32 * SCALE
     coords = [
         (cx - dx, cy - dy),  # TL
         (cx + dx, cy - dy),  # TR
@@ -548,13 +552,13 @@ def build_math_answer_buttons(options):
     btns = []
     for (bx, by), opt in zip(coords, options):
         btns.append(Button(bx, by, str(opt),
-                           ("answer", opt), w=240))
+                           ("answer", opt), w=240 * SCALE))
     return btns
 
 
 def draw_time_bar(surface, fraction_left):
     """Полоса оставшегося времени по верху игровой зоны под панелью."""
-    bar_h = 8
+    bar_h = 8 * SCALE
     full_w = WIN_W
     w = int(full_w * max(0.0, min(1.0, fraction_left)))
     # Цвет от зелёного к красному по мере уменьшения времени.
