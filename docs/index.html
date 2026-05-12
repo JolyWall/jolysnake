@@ -286,8 +286,33 @@ function show_infobox() {
 
     <script src="https://pygame-web.github.io/cdn/0.9.3//browserfs.min.js"></script>
 
-    <style>html,body{margin:0;padding:0;overflow:hidden;overscroll-behavior:none;touch-action:none;height:100%;width:100%;-webkit-user-select:none;user-select:none}canvas{touch-action:none false});document.addEventListener('gesturestart',function(e){e.preventDefault()},{passive:false});document.addEventListener('dblclick',function(e){e.preventDefault()},{passive:false});</script>
-
+<!-- /* PYGBAG_PATCH_CSS */ -->
+<style>
+  /* Запрещаем браузеру обрабатывать тач как скролл/зум. */
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    height: 100%;
+    width: 100%;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Растягиваем canvas во viewport, сохраняя пропорции игры. */
+  canvas.emscripten {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(100vw, calc(100vh * 672 / 728)) !important;
+    height: min(100vh, calc(100vw * 728 / 672)) !important;
+    z-index: 5 !important;
+  }
+  canvas { touch-action: none !important; }
+</style>
+</head>
 
 <body>
 
@@ -435,5 +460,12 @@ frameborder="1"
 
     </script>
 
-
+<!-- /* PYGBAG_PATCH_JS */ -->
+<script>
+  // Блокируем скролл/зум страницы на тач — все жесты уходят в игру.
+  document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('dblclick', function(e){ e.preventDefault(); }, { passive: false });
+</script>
+</body>
 </html>
