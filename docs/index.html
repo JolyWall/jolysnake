@@ -462,10 +462,57 @@ frameborder="1"
 
 <!-- /* PYGBAG_PATCH_JS */ -->
 <script>
-  // Блокируем скролл/зум страницы на тач — все жесты уходят в игру.
+  // === 1. Блокируем скролл/зум страницы ===
   document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
   document.addEventListener('dblclick', function(e){ e.preventDefault(); }, { passive: false });
+
+  // === 2. Детект свайпов по всему экрану — эмулируем стрелки клавиатуры ===
+  // Pygame получает события касания только от canvas. Серые поля по бокам —
+  // вне canvas, оттуда свайпы не доходят. Поэтому слушаем тач на документе
+  // и шлём канвасу синтетический keydown — pygame подхватит его через KEY_MAP.
+
+  var swipeStart = null;
+  var THRESHOLD  = 30;  // пиксели
+
+  function fireKey(key, code) {
+    var canvas = document.getElementById('canvas');
+    if (!canvas) return;
+    var init = { key: key, code: key, keyCode: code, which: code,
+                 bubbles: true, cancelable: true };
+    canvas.dispatchEvent(new KeyboardEvent('keydown', init));
+    // keyup тоже — SDL ждёт пару, и иначе клавиша считается зажатой.
+    canvas.dispatchEvent(new KeyboardEvent('keyup', init));
+  }
+
+  function classify(dx, dy) {
+    if (Math.abs(dx) > Math.abs(dy)) {
+      return dx > 0 ? ['ArrowRight', 39] : ['ArrowLeft', 37];
+    }
+    return dy > 0 ? ['ArrowDown', 40] : ['ArrowUp', 38];
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if (e.touches.length !== 1) { swipeStart = null; return; }
+    swipeStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: false });
+
+  document.addEventListener('touchmove', function(e){
+    if (!swipeStart || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    var dx = t.clientX - swipeStart.x;
+    var dy = t.clientY - swipeStart.y;
+    if (Math.abs(dx) > THRESHOLD || Math.abs(dy) > THRESHOLD) {
+      var k = classify(dx, dy);
+      fireKey(k[0], k[1]);
+      // Сдвигаем "начало" к текущей точке — серию свайпов внутри одного
+      // касания (зигзаг) ловим без отрыва пальца.
+      swipeStart = { x: t.clientX, y: t.clientY };
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend',    function(){ swipeStart = null; }, { passive: false });
+  document.addEventListener('touchcancel', function(){ swipeStart = null; }, { passive: false });
 </script>
 </body>
 </html>
