@@ -19,8 +19,11 @@ echo === [3/5] Патч index.html: отключаем браузерный ск
 powershell -NoProfile -Command ^
   "$p='%HERE%docs\index.html';" ^
   "$c=Get-Content $p -Raw -Encoding UTF8;" ^
-  "$inject='    <style>html,body{margin:0;padding:0;overflow:hidden;overscroll-behavior:none;touch-action:none;height:100%%;width:100%%;-webkit-user-select:none;user-select:none}canvas{touch-action:none !important}</style>'+[char]10+'</head>';" ^
-  "if ($c -notmatch 'touch-action: none') { $c = $c -replace '</head>', $inject; [System.IO.File]::WriteAllText($p,$c,[System.Text.UTF8Encoding]::new($false)) }"
+  "$css='    <style>html,body{margin:0;padding:0;overflow:hidden;overscroll-behavior:none;touch-action:none;height:100%%;width:100%%;-webkit-user-select:none;user-select:none}canvas{touch-action:none !important}</style>'+[char]10+'</head>';" ^
+  "$js='<script>document.addEventListener(''touchmove'',function(e){e.preventDefault()},{passive:false});document.addEventListener(''gesturestart'',function(e){e.preventDefault()},{passive:false});document.addEventListener(''dblclick'',function(e){e.preventDefault()},{passive:false});</script>'+[char]10+'</body>';" ^
+  "if ($c -notmatch 'touch-action: none') { $c = $c -replace '</head>', $css };" ^
+  "if ($c -notmatch 'touchmove.*preventDefault') { $c = $c -replace '</body>', $js };" ^
+  "[System.IO.File]::WriteAllText($p,$c,[System.Text.UTF8Encoding]::new($false))"
 if errorlevel 1 goto :err
 
 echo === [4/5] Коммит ===

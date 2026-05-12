@@ -450,5 +450,11 @@ frameborder="1"
 
     </script>
 
+<script>
+  // Блокируем скролл/зум страницы на тач — все жесты уходят в игру.
+  document.addEventListener('touchmove', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('dblclick', function(e){ e.preventDefault(); }, { passive: false });
+</script>
 </body>
 </html>
