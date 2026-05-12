@@ -157,20 +157,33 @@ JS = """
   // выставляем inline-стили на canvas. Это перекрывает любой CSS извне.
   var GAME_W = 672;
   var GAME_H = 728;
+  // Когда активна крестовина — резервируем столько px снизу,
+  // и canvas центрируется только в верхней части viewport.
+  var DPAD_RESERVE = 240;
+
+  function isDpadMode() {
+    try { return localStorage.getItem('snake_touch_mode') === 'dpad'; }
+    catch (e) { return false; }
+  }
+
   function fitCanvas() {
     var canvas = document.getElementById('canvas');
     if (!canvas) return;
     var vw = window.innerWidth;
     var vh = window.innerHeight;
-    var scale = Math.min(vw / GAME_W, vh / GAME_H);
+    var reserveBottom = isDpadMode() ? DPAD_RESERVE : 0;
+    var availH = Math.max(100, vh - reserveBottom);
+    var scale = Math.min(vw / GAME_W, availH / GAME_H);
     var w = Math.floor(GAME_W * scale);
     var h = Math.floor(GAME_H * scale);
+    var left = Math.floor((vw - w) / 2);
+    var top  = Math.floor((availH - h) / 2);
     var setI = function(prop, val) {
       canvas.style.setProperty(prop, val, 'important');
     };
     setI('position', 'fixed');
-    setI('left', Math.floor((vw - w) / 2) + 'px');
-    setI('top',  Math.floor((vh - h) / 2) + 'px');
+    setI('left', left + 'px');
+    setI('top',  top  + 'px');
     setI('width',  w + 'px');
     setI('height', h + 'px');
     setI('transform', 'none');
@@ -278,24 +291,17 @@ JS = """
   function placeDpad() {
     var pad = document.getElementById('snake-dpad');
     if (!pad) return;
-    var mode = (function(){ try { return localStorage.getItem('snake_touch_mode'); } catch(e) { return null; } })();
-    if (mode !== 'dpad') {
+    if (!isDpadMode()) {
       pad.style.display = 'none';
       return;
     }
-    // Считаем низ canvas — крестовину помещаем под него по центру.
-    var canvas = document.getElementById('canvas');
-    if (!canvas) return;
-    var rect = canvas.getBoundingClientRect();
+    // Крестовина прижимается к низу окна — это устойчиво на всех экранах.
+    // Игровая зона сама поднимается выше (см. DPAD_RESERVE в fitCanvas).
     var padW = 200, padH = 200;
     var vh = window.innerHeight;
     var vw = window.innerWidth;
-    // Стандартно — прямо под canvas, центрировано горизонтально.
-    var top  = Math.floor(rect.bottom + 20);
+    var top  = vh - padH - 20;
     var left = Math.floor((vw - padW) / 2);
-    // Если снизу нет места — прижимаемся к низу окна (десктоп без letterbox).
-    if (top + padH > vh - 10) top = vh - padH - 10;
-    if (top < rect.top)       top = vh - padH - 10;  // запасной случай
     pad.style.top  = top  + 'px';
     pad.style.left = left + 'px';
     pad.style.display = 'block';
